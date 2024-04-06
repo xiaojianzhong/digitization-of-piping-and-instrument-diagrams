@@ -94,6 +94,8 @@ def construct_graph(
     end_time = time.time()
     logger.debug(f"Step 3: Total time taken for creating the nodes on the graph: {end_time - start_time}")
 
+    graph.draw_graph(text_detection_results.image_details, pid_image, debug_image_graph_with_lines_and_symbols_path)
+
     # step 4: line with symbol connection
     logger.info("Step 4: Create line start and end connection candidates...")
     start_time = time.time()
@@ -128,8 +130,6 @@ def construct_graph(
                                    norm_graph_symbol_to_symbol_distance_threshold)
     end_time = time.time()
     logger.debug(f"Step 6: Total time taken for connecting the symbols that are close: {end_time - start_time}")
-
-    graph.draw_graph(text_detection_results.image_details, pid_image, debug_image_graph_with_lines_and_symbols_path)
 
     # step 7: connecting the lines with arrows
     logger.debug("Step 7: Connecting the lines with arrows...")
@@ -179,6 +179,7 @@ def initialize_graph(text_and_symbols_associated_list: list[SymbolAndTextAssocia
     for ls, line_segment in enumerate(line_detection_results):
         dic = line_segment.dict()
         dic['node_type'] = GraphNodeType.line
+        dic['id'] = ls
         node_id = create_node_id(GraphNodeType.line, ls)
         graph.add_node(node_id, **dic)
 
@@ -197,7 +198,6 @@ def get_args():
         '--pid-id',
         dest='pid_id',
         type=str,
-        default='hw2_sub1',
         help='PID ID'
     )
     parser.add_argument(
@@ -207,16 +207,22 @@ def get_args():
         help='Original image path'
     )
     parser.add_argument(
-        '--line-detection-path',
-        dest='line_detection_path',
+        '--symbol-detection-results-path',
+        dest='symbol_detection_results_path',
         type=str,
-        help='line detection results path'
+        help='symbol detection results path'
     )
     parser.add_argument(
-        '--text-detection-path',
-        dest='text_detection_path',
+        '--text-detection-results-path',
+        dest='text_detection_results_path',
         type=str,
         help='text detection results path'
+    )
+    parser.add_argument(
+        '--line-detection-results-path',
+        dest='line_detection_results_path',
+        type=str,
+        help='line detection results path'
     )
     parser.add_argument(
         '--output-image-graph-path',
@@ -250,6 +256,12 @@ def get_args():
         help='symbol label prefixes to include in graph image output'
     )
     parser.add_argument(
+        "--relevant-bounding-box-for-detection",
+        dest="bounding_box_inclusive",
+        type=json.loads,
+        help="coordinates to exclude legend and outerbox border lines"
+    )
+    parser.add_argument(
         '--propagation-should-use-exhaustive-search',
         dest='propagation_should_use_exhaustive_search',
         action='store_true',
@@ -260,28 +272,94 @@ def get_args():
 
 
 if __name__ == "__main__":
+    import cv2
     import json
+    import os
+    import xml.etree.ElementTree as ET
+    from app.models.bounding_box import BoundingBox
     from app.models.graph_construction.graph_construction_response import GraphConstructionInferenceResponse
     from app.models.image_details import ImageDetails
+    from app.models.text_detection.text_recognized import TextRecognized
+
     args = get_args()
 
     with open(args.image_path, 'rb') as fimage:
         pid_image = fimage.read()
 
-    with open(args.text_detection_path, 'r') as ftext:
-        results = ftext.read()
-        text_detection_results = GraphConstructionInferenceRequest.parse_raw(results)
+    image_details = ImageDetails(
+        format=os.path.splitext(args.image_path)[1][1:],
+        width=cv2.imread(args.image_path, cv2.IMREAD_COLOR).shape[1],
+        height=cv2.imread(args.image_path, cv2.IMREAD_COLOR).shape[0],
+    )
 
-    with open(args.line_detection_path, 'r') as fline:
-        results = fline.read()
-        line_detection_results = LineDetectionInferenceResponse.parse_raw(results)
+    if not os.path.exists(args.symbol_detection_results_path):
+        raise ValueError(f"Symbol detection results path {args.symbol_detection_results_path} does not exist")
+    symbol_detection_results: list[SymbolAndTextAssociated] = []
+    tree = ET.parse(args.symbol_detection_results_path)
+    for i, obj in enumerate(tree.getroot().findall('object')):
+        symbol_detection_results.append(SymbolAndTextAssociated(
+            topX=int(obj.find('bndbox').find('xmin').text) / image_details.width,
+            topY=int(obj.find('bndbox').find('ymin').text) / image_details.height,
+            bottomX=int(obj.find('bndbox').find('xmax').text) / image_details.width,
+            bottomY=int(obj.find('bndbox').find('ymax').text) / image_details.height,
+            id=i,
+            label='Instrument/Valve/',
+            text_associated='Symbol-0',
+        ))
 
-    text_detection_results.propagation_pass_exhaustive_search = args.propagation_should_use_exhaustive_search
+    if not os.path.exists(args.text_detection_results_path):
+        raise ValueError(f"Text detection results path {args.text_detection_results_path} does not exist")
+    text_detection_results: list[TextRecognized] = []
+    tree = ET.parse(args.text_detection_results_path)
+    for obj in tree.getroot().findall('object'):
+        text_detection_results.append(TextRecognized(
+            topX=int(obj.find('bndbox').find('xmin').text) / image_details.width,
+            topY=int(obj.find('bndbox').find('ymin').text) / image_details.height,
+            bottomX=int(obj.find('bndbox').find('xmax').text) / image_details.width,
+            bottomY=int(obj.find('bndbox').find('ymax').text) / image_details.height,
+            text='text',
+        ))
+
+    if not os.path.exists(args.line_detection_results_path):
+        raise ValueError(f"Line detection results path {args.line_detection_results_path} does not exist")
+    line_detection_results: list[LineSegment] = []
+    with open(args.line_detection_results_path, 'r') as fline:
+        tree = json.load(fline)
+        for obj in tree:
+            line_detection_results.append(LineSegment(
+                startX=obj['startX'],
+                startY=obj['startY'],
+                endX=obj['endX'],
+                endY=obj['endY'],
+            ))
+
+    if args.bounding_box_inclusive is not None:
+        bounding_box_inclusive = BoundingBox(
+            topX=args.bounding_box_inclusive["topX"],
+            topY=args.bounding_box_inclusive["topY"],
+            bottomX=args.bounding_box_inclusive["bottomX"],
+            bottomY=args.bounding_box_inclusive["bottomY"]
+        )
+    else:
+        bounding_box_inclusive = None
+
     asset_connectivities, _ = construct_graph(
         pid_id=args.pid_id,
         pid_image=pid_image,
-        text_detection_results=text_detection_results,
-        line_detection_results=line_detection_results,
+        text_detection_results=GraphConstructionInferenceRequest(
+            image_url='',
+            image_details=image_details,
+            bounding_box_inclusive=bounding_box_inclusive,
+            all_text_list=text_detection_results,
+            text_and_symbols_associated_list=symbol_detection_results,
+            propagation_pass_exhaustive_search=args.propagation_should_use_exhaustive_search,
+        ),
+        line_detection_results=LineDetectionInferenceResponse(
+            image_url='',
+            image_details=image_details,
+            line_segments_count=len(line_detection_results),
+            line_segments=line_detection_results,
+        ),
         output_image_graph_path=args.output_image_graph_path,
         debug_image_graph_connections_path=args.debug_image_graph_connections_path,
         debug_image_graph_with_lines_and_symbols_path=args.debug_image_graph_with_lines_and_symbols_path,

@@ -139,7 +139,8 @@ def draw_persistent_graph_annotated(
                 # is intentional to disambiguate between the assets starting the path and the
                 # non-terminal symbols that are part of the path.
                 line_segment = LineSegment(startX=segment.bottomX, startY=segment.bottomY, endX=segment.topX, endY=segment.topY)
-                draw_line(img,
+                draw_line(None,
+                          img,
                           image_details,
                           line_segment,
                           color)

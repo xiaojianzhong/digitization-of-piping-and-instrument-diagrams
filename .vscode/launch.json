@@ -71,17 +71,17 @@
             "name": "Python: Graph Construction",
             "type": "python",
             "request": "launch",
-            "envFile": "${workspaceFolder}/src/.env",
             "module": "app.services.graph_construction.graph_construction_service",
             "args": [
-                "--pid-id", "S1_sub1",
-                "--image-path", "./app/services/graph_construction/input/images/S1_sub1.png",
-                "--line-detection-path", "./app/services/graph_construction/input/line_detection/S1_sub1.json",
-                "--text-detection-path", "./app/services/graph_construction/input/text_detection/S1_sub1.json",
-                "--output-image-graph-path", "./app/services/graph_construction/output/S1_sub1_graph.png",
-                "--debug-image-graph-connections-path",  "./app/services/graph_construction/output/S1_sub1_annotated_connected_graph.png",
-                "--output-connectivity-json-path", "./app/services/graph_construction/output/S1_sub1_graph.json",
-                "--debug-image-graph-with-lines-and-symbols-path", "./app/services/graph_construction/output/S1_sub1_graph_with_lines_and_symbols.png"
+                "--pid-id", "S1",
+                "--image-path", "./app/services/graph_construction/input/image.jpg",
+                "--symbol-detection-results-path", "./app/services/graph_construction/input/symbol_detection_results.xml",
+                "--text-detection-results-path", "./app/services/graph_construction/input/text_detection_results.xml",
+                "--line-detection-results-path", "./app/services/graph_construction/input/line_detection_results.json",
+                "--output-image-graph-path", "./app/services/graph_construction/output/graph.png",
+                "--debug-image-graph-connections-path",  "./app/services/graph_construction/output/annotated_connected_graph.png",
+                "--output-connectivity-json-path", "./app/services/graph_construction/output/graph.json",
+                "--debug-image-graph-with-lines-and-symbols-path", "./app/services/graph_construction/output/graph_with_lines_and_symbols.png"
             ],
             "cwd": "${workspaceFolder}/src/",
             "justMyCode": true

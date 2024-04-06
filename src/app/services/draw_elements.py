@@ -71,6 +71,7 @@ def draw_annotation_on_image(
 
 
 def draw_line(
+        id: Optional[int],
         image: bytes,
         image_details: ImageDetails,
         line_segment: LineSegment,
@@ -85,6 +86,8 @@ def draw_line(
         image_details.width)
 
     cv2.line(image, (x1, y1), (x2, y2), color, LINE_THICKNESS)
+    if id is not None:
+        cv2.putText(image, f'{id}', (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, color, FONT_THICKNESS)
 
 
 def draw_bounding_boxes(

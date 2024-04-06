@@ -283,7 +283,8 @@ class GraphService:
             node_info = node[1]
             node_type = node_info['type']
 
-            color = (0, 155, 0)
+            symbol_color = (0, 155, 0)
+            line_color = (0, 0, 155)
 
             if node_type == GraphNodeType.symbol:
                 draw_annotation_on_image(node_info['id'],
@@ -297,10 +298,11 @@ class GraphService:
                                          ),
                                          node_info['text_associated'],
                                          None,
-                                         color,
-                                         color)
+                                         symbol_color,
+                                         symbol_color)
             else:
                 draw_line(
+                    node_info['id'],
                     img,
                     image_details,
                     LineSegment(
@@ -308,7 +310,7 @@ class GraphService:
                         endX=node_info['endX'],
                         startY=node_info['startY'],
                         endY=node_info['endY']),
-                    color)
+                    line_color)
 
         cv2.imwrite(file_path, img)
 
