@@ -105,10 +105,10 @@
             "request": "launch",
             "module": "app.services.graph_construction.tools.show_paths",
             "args": [
-                "--image-path", "./app/services/graph_construction/input/images/S1_sub1.png",
-                "--asset-connectivity-path", "./app/services/graph_construction/output/S1_sub1_graph.json",
-                "--starting-asset-id", "60",
-                "--output-folder-path", "./app/services/graph_construction/output/sub_graphs/S1_sub1"
+                "--image-path", "./app/services/graph_construction/input/image.jpg",
+                "--asset-connectivity-path", "./app/services/graph_construction/output/graph.json",
+                "--starting-asset-id", "0",
+                "--output-folder-path", "./app/services/graph_construction/output/sub_graphs"
             ],
             "cwd": "${workspaceFolder}/src/",
             "justMyCode": true

@@ -13,7 +13,7 @@ from app.models.bounding_box import BoundingBox
 
 STARTING_ASSET_COLOR = (255, 0, 0)  # dark blue
 CONNECTED_ASSET_COLOR = (0, 128, 0)  # dark green
-VISITED_ASSET_COLOR = (192, 192, 192)
+VISITED_ASSET_COLOR = (0, 0, 128)  # dark red
 
 
 def _get_args():
