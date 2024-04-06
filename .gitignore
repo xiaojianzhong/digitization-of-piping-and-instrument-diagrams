@@ -445,13 +445,4 @@ cython_debug/
 src/app/data/**
 !src/app/data/.gitkeep
 
-src/app/services/**/output/**
-!src/app/services/**/output/.gitkeep
-
-spikes/graph-construction/src/output/**
-!spikes/graph-construction/src/output/.gitkeep
-
-spikes/pid-line-detection/src/output/**
-!spikes/pid-line-detection/src/output/.gitkeep
-
 .DS_Store

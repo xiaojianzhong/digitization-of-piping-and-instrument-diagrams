@@ -57,15 +57,12 @@
             "name": "Python: Line Segments Detection",
             "type": "python",
             "request": "launch",
-            "envFile": "${workspaceFolder}/src/.env",
             "module": "app.services.line_detection.line_segments_service",
             "args": [
                 "--pid-id", "S1",
-                "--image-path", "./samples/input/images/S1.png",
-                "--preprocessed-image-path", "./app/services/line_detection/input/S1-cropped_text.jpg",
-                "--relevant-bounding-box-for-detection", "{\"topX\": 45, \"topY\": 49, \"bottomX\": 997, \"bottomY\": 728}",
-                "--image-height", "781",
-                "--image-width", "1388"
+                "--image-path", "./app/services/line_detection/input/image.jpg",
+                "--symbol-detection-results-path", "./app/services/line_detection/input/symbol_detection_results.xml",
+                "--text-detection-results-path", "./app/services/line_detection/input/text_detection_results.xml",
             ],
             "cwd": "${workspaceFolder}/src/",
             "justMyCode": true

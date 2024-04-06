@@ -4,6 +4,7 @@ from logger_config import get_logger
 import time
 import cv2
 import numpy as np
+from app.config import config
 from app.models.line_detection.line_segment import LineSegment
 from app.models.bounding_box import BoundingBox
 from typing import Optional
@@ -116,9 +117,8 @@ if __name__ == "__main__":
     import argparse
     import os
     import json
-    from app.services.blob_storage_client import blob_storage_client
-
-    blob_storage_client.init()
+    import xml.etree.ElementTree as ET
+    from app.services.line_detection.utils.line_detection_image_preprocessor import LineDetectionImagePreprocessor
 
     parser = argparse.ArgumentParser(
         description='Run line segment detection on the given image.')
@@ -137,10 +137,17 @@ if __name__ == "__main__":
         required=True
     )
     parser.add_argument(
-        "--preprocessed-image-path",
+        "--symbol-detection-results-path",
         type=str,
-        dest="preprocessed_image_path",
-        help="The path to the preprocessed image",
+        dest="symbol_detection_results_path",
+        help="The path to the symbol detection results",
+        required=True
+    )
+    parser.add_argument(
+        "--text-detection-results-path",
+        type=str,
+        dest="text_detection_results_path",
+        help="The path to the text detection results",
         required=True
     )
     parser.add_argument(
@@ -149,65 +156,113 @@ if __name__ == "__main__":
         type=json.loads,
         help="coordinates to exclude legend and outerbox border lines"
     )
-    parser.add_argument(
-        "--image-height",
-        dest="image_height",
-        type=int,
-        help="image height"
-    )
-    parser.add_argument(
-        "--image-width",
-        dest="image_width",
-        type=int,
-        help="image width"
-    )
 
     args = parser.parse_args()
 
     pid_id = args.pid_id
     image_path = args.image_path
-    preprocessed_image_path = args.preprocessed_image_path
+    symbol_detection_results_path = args.symbol_detection_results_path
+    text_detection_results_path = args.text_detection_results_path
     bounding_box_inclusive = \
         args.bounding_box_inclusive
 
     if bounding_box_inclusive is not None:
-        bounding_box = BoundingBox(
+        bounding_box_inclusive = BoundingBox(
             topX=bounding_box_inclusive["topX"],
             topY=bounding_box_inclusive["topY"],
             bottomX=bounding_box_inclusive["bottomX"],
             bottomY=bounding_box_inclusive["bottomY"]
         )
     else:
-        bounding_box = None
+        bounding_box_inclusive = None
 
     if not os.path.exists(image_path):
         raise ValueError(f"Image path {image_path} does not exist")
 
-    if not os.path.exists(preprocessed_image_path):
-        raise ValueError(
-            f"Preprocessed Image path {preprocessed_image_path} does not exist"
-        )
+    if not os.path.exists(symbol_detection_results_path):
+        raise ValueError(f"Symbol detection results path {symbol_detection_results_path} does not exist")
+
+    if not os.path.exists(text_detection_results_path):
+        raise ValueError(f"Text detection results path {text_detection_results_path} does not exist")
 
     # get bytes from image_path file
     with open(image_path, "rb") as file:
         image_bytes = file.read()
+    image_height, image_width = cv2.imread(image_path, cv2.IMREAD_COLOR).shape[:2]
 
-    gray = cv2.cvtColor(cv2.imread(preprocessed_image_path),
-                        cv2.COLOR_BGR2GRAY)
+    symbol_bboxes: list[BoundingBox] = []
+    tree = ET.parse(symbol_detection_results_path)
+    for obj in tree.getroot().findall('object'):
+        symbol_bboxes.append(BoundingBox(
+            topX=int(obj.find('bndbox').find('xmin').text),
+            topY=int(obj.find('bndbox').find('ymin').text),
+            bottomX=int(obj.find('bndbox').find('xmax').text),
+            bottomY=int(obj.find('bndbox').find('ymax').text),
+        ))
+    symbol_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    for bbox in symbol_bboxes:
+        xmin = int(bbox.topX)
+        ymin = int(bbox.topY)
+        xmax = int(bbox.bottomX)
+        ymax = int(bbox.bottomY)
+        cv2.rectangle(symbol_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+    cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'symbol_detection_results.jpg'), symbol_image)
 
-    thresh = cv2.threshold(gray, 0, 255,
-                           cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    text_bboxes: list[BoundingBox] = []
+    tree = ET.parse(text_detection_results_path)
+    for obj in tree.getroot().findall('object'):
+        text_bboxes.append(BoundingBox(
+            topX=int(obj.find('bndbox').find('xmin').text),
+            topY=int(obj.find('bndbox').find('ymin').text),
+            bottomX=int(obj.find('bndbox').find('xmax').text),
+            bottomY=int(obj.find('bndbox').find('ymax').text),
+        ))
+    text_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    for bbox in text_bboxes:
+        xmin = int(bbox.topX)
+        ymin = int(bbox.topY)
+        xmax = int(bbox.bottomX)
+        ymax = int(bbox.bottomY)
+        cv2.rectangle(text_image, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+    cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'text_detection_results.jpg'), text_image)
+
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+
+    image = LineDetectionImagePreprocessor.clear_bounding_boxes(image, symbol_bboxes)
+
+    image = LineDetectionImagePreprocessor.clear_bounding_boxes(image, text_bboxes)
+
+    image = cv2.cvtColor(image,
+                         cv2.COLOR_BGR2GRAY)
+
+    image = cv2.threshold(image, 0, 255,
+                          cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+    image = LineDetectionImagePreprocessor.apply_thinning(image)
 
     lines_list = detect_line_segments(
-        pid_id, thresh,
-        bounding_box,
-        image_height=args.image_height,
-        image_width=args.image_width
+        pid_id, image,
+        image_height=image_height,
+        image_width=image_width,
+        max_line_gap=config.line_detection_hough_max_line_gap,
+        threshold=config.line_detection_hough_threshold,
+        min_line_length=config.line_detection_hough_min_line_length,
+        rho=config.line_detection_hough_rho,
+        theta_param=config.line_detection_hough_theta,
+        bounding_box_inclusive=bounding_box_inclusive,
     )
 
-    filename = os.path.splitext(os.path.basename(image_path))[0]
+    line_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    for line in lines_list:
+        xmin = int(line.startX * image_width)
+        ymin = int(line.startY * image_height)
+        xmax = int(line.endX * image_width)
+        ymax = int(line.endY * image_height)
+        cv2.line(line_image, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
+    cv2.imwrite(os.path.join(os.path.dirname(__file__), 'output', 'line_detection_results.jpg'), line_image)
+
     results_output_path = os.path.join(os.path.dirname(__file__), 'output',
-                                       filename + '_line_segments.json')
+                                       'line_detection_results.json')
     # write lines_list to json file
     with open(results_output_path, 'w') as f:
         json.dump([line.__dict__ for line in lines_list], f, indent=4)
