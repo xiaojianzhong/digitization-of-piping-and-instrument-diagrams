@@ -200,12 +200,13 @@ if __name__ == "__main__":
             bottomY=int(obj.find('bndbox').find('ymax').text),
         ))
     symbol_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    for bbox in symbol_bboxes:
+    for i, bbox in enumerate(symbol_bboxes):
         xmin = int(bbox.topX)
         ymin = int(bbox.topY)
         xmax = int(bbox.bottomX)
         ymax = int(bbox.bottomY)
         cv2.rectangle(symbol_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+        cv2.putText(symbol_image, f'{i}', (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'symbol_detection_results.jpg'), symbol_image)
 
     text_bboxes: list[BoundingBox] = []
@@ -218,12 +219,13 @@ if __name__ == "__main__":
             bottomY=int(obj.find('bndbox').find('ymax').text),
         ))
     text_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    for bbox in text_bboxes:
+    for i, bbox in enumerate(text_bboxes):
         xmin = int(bbox.topX)
         ymin = int(bbox.topY)
         xmax = int(bbox.bottomX)
         ymax = int(bbox.bottomY)
         cv2.rectangle(text_image, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+        cv2.putText(text_image, f'{i}', (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'text_detection_results.jpg'), text_image)
 
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
@@ -253,12 +255,13 @@ if __name__ == "__main__":
     )
 
     line_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    for line in lines_list:
+    for i, line in enumerate(lines_list):
         xmin = int(line.startX * image_width)
         ymin = int(line.startY * image_height)
         xmax = int(line.endX * image_width)
         ymax = int(line.endY * image_height)
         cv2.line(line_image, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
+        cv2.putText(line_image, f'{i}', (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'output', 'line_detection_results.jpg'), line_image)
 
     results_output_path = os.path.join(os.path.dirname(__file__), 'output',
