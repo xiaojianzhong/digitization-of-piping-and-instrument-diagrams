@@ -154,6 +154,13 @@ if __name__ == "__main__":
         required=True
     )
     parser.add_argument(
+        '--line-detection-results-path',
+        type=str,
+        dest='line_detection_results_path',
+        default=os.path.join(os.path.dirname(__file__), 'output', 'line_detection_results.json'),
+        help='The path to the line detection results',
+    )
+    parser.add_argument(
         "--relevant-bounding-box-for-detection",
         dest="bounding_box_inclusive",
         type=json.loads,
@@ -166,6 +173,7 @@ if __name__ == "__main__":
     image_path = args.image_path
     symbol_detection_results_path = args.symbol_detection_results_path
     text_detection_results_path = args.text_detection_results_path
+    line_detection_results_path = args.line_detection_results_path
     bounding_box_inclusive = \
         args.bounding_box_inclusive
 
@@ -285,8 +293,6 @@ if __name__ == "__main__":
         cv2.putText(line_image, f'{i}', (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'output', 'line_detection_results.jpg'), line_image)
 
-    results_output_path = os.path.join(os.path.dirname(__file__), 'output',
-                                       'line_detection_results.json')
     # write lines_list to json file
-    with open(results_output_path, 'w') as f:
+    with open(line_detection_results_path, 'w') as f:
         json.dump([line.__dict__ for line in lines_list], f, indent=4)
