@@ -2,6 +2,7 @@
 # Licensed under the MIT license.
 import cv2
 import networkx as nx
+from PIL import Image, ImageDraw
 from logger_config import get_logger
 from app.models.enums.graph_node_type import GraphNodeType
 from app.models.enums.flow_direction import FlowDirection
@@ -278,6 +279,8 @@ class GraphService:
         This function will draw the graph based on line and symbol locations and save it to the file path.
         """
         img = cv2.imdecode(np.frombuffer(pid_image, np.uint8), cv2.IMREAD_COLOR)
+        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(img)
 
         for node in self.G.nodes(data=True):
             node_info = node[1]
@@ -288,7 +291,7 @@ class GraphService:
 
             if node_type == GraphNodeType.symbol:
                 draw_annotation_on_image(node_info['id'],
-                                         img,
+                                         draw,
                                          image_details,
                                          BoundingBox(
                                               topX=node_info['topX'],
@@ -303,7 +306,7 @@ class GraphService:
             else:
                 draw_line(
                     node_info['id'],
-                    img,
+                    draw,
                     image_details,
                     LineSegment(
                         startX=node_info['startX'],
@@ -312,6 +315,7 @@ class GraphService:
                         endY=node_info['endY']),
                     line_color)
 
+        img = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
         cv2.imwrite(file_path, img)
 
     def _get_untraceable_node_ids(self, source_key: str):

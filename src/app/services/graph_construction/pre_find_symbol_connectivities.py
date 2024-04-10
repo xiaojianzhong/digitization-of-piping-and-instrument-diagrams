@@ -51,10 +51,7 @@ def pre_find_symbol_connectivities(
             flow_direction_asset_ids.add(symbol_node_id)
 
         # get all the asset symbols - valid alpha-numeric sensors, valves, equipments and pagination
-        symbol_text = symbol_node[SymbolNodeKeysConfig.TEXT_ASSOCIATED_KEY]
-        if does_string_contain_at_least_one_number_and_one_letter(symbol_text) and \
-                is_symbol_text_invalid(symbol_text) is False and \
-                symbol_label.lower().startswith(symbol_label_prefixes_with_text_lowered_tuple):
+        if symbol_label.lower().startswith(symbol_label_prefixes_with_text_lowered_tuple):
             asset_symbol_ids.add(symbol_node_id)
 
             # get all the valve symbols

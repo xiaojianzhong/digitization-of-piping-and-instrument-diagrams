@@ -61,8 +61,8 @@
             "args": [
                 "--pid-id", "S1",
                 "--image-path", "./app/services/line_detection/input/image.jpg",
-                "--symbol-detection-results-path", "./app/services/line_detection/input/symbol_detection_results.xml",
-                "--text-detection-results-path", "./app/services/line_detection/input/text_detection_results.xml",
+                "--symbol-detection-results-path", "./app/services/line_detection/input/symbol_detection_results.json",
+                "--text-detection-results-path", "./app/services/line_detection/input/text_detection_results.json",
             ],
             "cwd": "${workspaceFolder}/src/",
             "justMyCode": true
@@ -75,8 +75,8 @@
             "args": [
                 "--pid-id", "S1",
                 "--image-path", "./app/services/graph_construction/input/image.jpg",
-                "--symbol-detection-results-path", "./app/services/graph_construction/input/symbol_detection_results.xml",
-                "--text-detection-results-path", "./app/services/graph_construction/input/text_detection_results.xml",
+                "--symbol-detection-results-path", "./app/services/graph_construction/input/symbol_detection_results.json",
+                "--text-detection-results-path", "./app/services/graph_construction/input/text_detection_results.json",
                 "--line-detection-results-path", "./app/services/graph_construction/input/line_detection_results.json",
                 "--output-image-graph-path", "./app/services/graph_construction/output/graph.png",
                 "--debug-image-graph-connections-path",  "./app/services/graph_construction/output/annotated_connected_graph.png",

@@ -8,14 +8,15 @@ from app.config import config
 from app.models.graph_construction.graph_construction_request import GraphConstructionInferenceRequest
 from app.models.line_detection.line_detection_response import LineDetectionInferenceResponse
 from app.models.line_detection.line_segment import LineSegment
+from app.models.text_detection.symbol_and_text_associated import SymbolAndTextAssociated
+from app.models.text_detection.text_recognized import TextRecognized
+from app.services.graph_construction.utils.normalize_config import normalize_pixel_config_value
 from .find_symbol_connectivities import find_symbol_connectivities
 from .pre_find_symbol_connectivities import pre_find_symbol_connectivities
 from .post_find_symbol_connectivities import post_find_symbol_connectivities
 from .connect_lines_with_closest_elements import connect_lines_with_closest_elements
 from .connect_lines_with_arrows import connect_lines_with_arrows
 from .remove_text_outside_main_inclusive_box import remove_text_outside_main_inclusive_box
-from app.models.text_detection.symbol_and_text_associated import SymbolAndTextAssociated
-from app.services.graph_construction.utils.normalize_config import normalize_pixel_config_value
 from .extend_lines import extend_lines
 from .create_line_connection_candidates import create_line_connection_candidates
 from .connect_symbols_that_are_close import connect_symbols_that_are_close
@@ -154,9 +155,11 @@ def construct_graph(
     end_time = time.time()
     logger.info(f"Step 8: Total time taken for graph traversal for finding asset connectivities: {end_time - start_time}")
 
+    '''
     draw_persistent_graph_networkx(asset_connectivities,
                                    output_image_graph_path,
                                    symbol_label_prefixes_to_include_in_graph_image_output)
+    '''
 
     draw_persistent_graph_annotated(asset_connectivities,
                                     pid_image,
@@ -275,11 +278,9 @@ if __name__ == "__main__":
     import cv2
     import json
     import os
-    import xml.etree.ElementTree as ET
     from app.models.bounding_box import BoundingBox
     from app.models.graph_construction.graph_construction_response import GraphConstructionInferenceResponse
     from app.models.image_details import ImageDetails
-    from app.models.text_detection.text_recognized import TextRecognized
 
     args = get_args()
 
@@ -295,30 +296,35 @@ if __name__ == "__main__":
     if not os.path.exists(args.symbol_detection_results_path):
         raise ValueError(f"Symbol detection results path {args.symbol_detection_results_path} does not exist")
     symbol_detection_results: list[SymbolAndTextAssociated] = []
-    tree = ET.parse(args.symbol_detection_results_path)
-    for i, obj in enumerate(tree.getroot().findall('object')):
-        symbol_detection_results.append(SymbolAndTextAssociated(
-            topX=int(obj.find('bndbox').find('xmin').text) / image_details.width,
-            topY=int(obj.find('bndbox').find('ymin').text) / image_details.height,
-            bottomX=int(obj.find('bndbox').find('xmax').text) / image_details.width,
-            bottomY=int(obj.find('bndbox').find('ymax').text) / image_details.height,
-            id=i,
-            label='Instrument/Valve/',
-            text_associated='Symbol-0',
-        ))
+    with open(args.symbol_detection_results_path, 'r') as fsymbol:
+        tree = json.load(fsymbol)
+        for i, obj in enumerate(tree):
+            symbol_detection_results.append(SymbolAndTextAssociated(
+                topX=obj['topX'],
+                topY=obj['topY'],
+                bottomX=obj['bottomX'],
+                bottomY=obj['bottomY'],
+                id=i,
+                # label=obj['label'],
+                label='Instrument/Valve/',
+                # text_associated='Symbol-0',
+                text_associated=obj['label'],
+            ))
 
     if not os.path.exists(args.text_detection_results_path):
         raise ValueError(f"Text detection results path {args.text_detection_results_path} does not exist")
     text_detection_results: list[TextRecognized] = []
-    tree = ET.parse(args.text_detection_results_path)
-    for obj in tree.getroot().findall('object'):
-        text_detection_results.append(TextRecognized(
-            topX=int(obj.find('bndbox').find('xmin').text) / image_details.width,
-            topY=int(obj.find('bndbox').find('ymin').text) / image_details.height,
-            bottomX=int(obj.find('bndbox').find('xmax').text) / image_details.width,
-            bottomY=int(obj.find('bndbox').find('ymax').text) / image_details.height,
-            text='text',
-        ))
+    with open(args.text_detection_results_path, 'r') as ftext:
+        tree = json.load(ftext)
+        for obj in tree:
+            text_detection_results.append(TextRecognized(
+                topX=obj['topX'],
+                topY=obj['topY'],
+                bottomX=obj['bottomX'],
+                bottomY=obj['bottomY'],
+                # text=obj['text'],
+                text='text',
+            ))
 
     if not os.path.exists(args.line_detection_results_path):
         raise ValueError(f"Line detection results path {args.line_detection_results_path} does not exist")

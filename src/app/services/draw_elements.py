@@ -2,6 +2,8 @@
 # Licensed under the MIT license.
 import cv2
 import numpy as np
+import os
+from PIL import Image, ImageDraw, ImageFont
 from app.models.bounding_box import BoundingBox
 from app.models.image_details import ImageDetails
 from app.utils.image_utils import denormalize_coordinates
@@ -12,14 +14,13 @@ from app.models.line_detection.line_segment import LineSegment
 VALID_COLOR = (0, 155, 0)
 INVALID_COLOR = (0, 0, 255)
 BOX_THICKNESS = 2
-FONT_SCALE = 0.5
-FONT_THICKNESS = 2
 LINE_THICKNESS = 2
+font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), '..', 'assets', 'Songti.ttc'), 16, encoding='utf-8')
 
 
 def draw_annotation_on_image(
     id: Optional[int],
-    image: bytes,
+    draw: ImageDraw,
     image_details: ImageDetails,
     bounding_box: BoundingBox,
     label: Optional[str],
@@ -30,8 +31,8 @@ def draw_annotation_on_image(
     '''
         Draws the annotation on the image.
 
-        :param image: The image.
-        :type image: cv2.Mat
+        :param draw: The image draw.
+        :type draw: PIL.ImageDraw
         :param bounding_box: The bounding box.
         :type bounding_box: BoundingBox
         :param label: The label.
@@ -66,13 +67,13 @@ def draw_annotation_on_image(
     label = f'{id}: {label}' if id is not None else label
 
     # draw the bounding box
-    cv2.rectangle(image, (x1, y1), (x2, y2), color, BOX_THICKNESS)
-    cv2.putText(image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, color, FONT_THICKNESS)
+    draw.rectangle([(x1, y1), (x2, y2)], outline=color, width=BOX_THICKNESS)
+    draw.text((x1, y1 - 20), label, color, font=font)
 
 
 def draw_line(
         id: Optional[int],
-        image: bytes,
+        draw: ImageDraw,
         image_details: ImageDetails,
         line_segment: LineSegment,
         color: tuple
@@ -85,9 +86,9 @@ def draw_line(
         image_details.height,
         image_details.width)
 
-    cv2.line(image, (x1, y1), (x2, y2), color, LINE_THICKNESS)
+    draw.line([(x1, y1), (x2, y2)], fill=color, width=LINE_THICKNESS)
     if id is not None:
-        cv2.putText(image, f'{id}', (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, color, FONT_THICKNESS)
+        draw.text((x1, y1 - 20), f'{id}', color, font=font)
 
 
 def draw_bounding_boxes(
@@ -126,17 +127,20 @@ def draw_bounding_boxes(
     if len(valid_bit_array) != len(bounding_boxes):
         raise ValueError('The number of valid bit arrays must match the number of bounding boxes.')
 
-    # convert the bytes to a cv2 image
+    # convert the bytes to a PIL ImageDraw
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(image)
     for id, bounding_box, label, valid_bit in zip(ids, bounding_boxes, annotations, valid_bit_array):
         draw_annotation_on_image(
             id,
-            image,
+            draw,
             image_details,
             bounding_box,
             label,
             valid_bit,
             VALID_COLOR,
             INVALID_COLOR)
+    image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
 
     return image

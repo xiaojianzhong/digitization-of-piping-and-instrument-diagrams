@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
 from app.models.image_details import ImageDetails
 from app.models.graph_construction.connected_symbols_item import ConnectedSymbolsItem
 from app.services.graph_construction.config.symbol_node_keys_config import SymbolNodeKeysConfig
@@ -107,6 +108,8 @@ def draw_persistent_graph_annotated(
   '''
 
     img = cv2.imdecode(np.frombuffer(pid_image, np.uint8), cv2.IMREAD_COLOR)
+    img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img)
 
     # All assets are included in this debug view - this can be tuned in the future
     for asset in assets:
@@ -118,7 +121,7 @@ def draw_persistent_graph_annotated(
 
         # Draw asset bounding box - this will draw all recognized assets
         draw_annotation_on_image(asset.id,
-                                 img,
+                                 draw,
                                  image_details,
                                  asset.bounding_box,
                                  asset.text_associated,
@@ -140,9 +143,10 @@ def draw_persistent_graph_annotated(
                 # non-terminal symbols that are part of the path.
                 line_segment = LineSegment(startX=segment.bottomX, startY=segment.bottomY, endX=segment.topX, endY=segment.topY)
                 draw_line(None,
-                          img,
+                          draw,
                           image_details,
                           line_segment,
                           color)
 
+    img = cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
     cv2.imwrite(output_file_path, img)

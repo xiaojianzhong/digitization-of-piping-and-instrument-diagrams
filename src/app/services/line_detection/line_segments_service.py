@@ -117,7 +117,10 @@ if __name__ == "__main__":
     import argparse
     import os
     import json
-    import xml.etree.ElementTree as ET
+    from PIL import Image, ImageDraw, ImageFont
+    from app.models.text_detection.symbol_and_text_associated import SymbolAndTextAssociated
+    from app.models.text_detection.text_recognized import TextRecognized
+    from app.services.line_detection.line_detection_service import _get_denormalized_items
     from app.services.line_detection.utils.line_detection_image_preprocessor import LineDetectionImagePreprocessor
 
     parser = argparse.ArgumentParser(
@@ -190,48 +193,66 @@ if __name__ == "__main__":
         image_bytes = file.read()
     image_height, image_width = cv2.imread(image_path, cv2.IMREAD_COLOR).shape[:2]
 
-    symbol_bboxes: list[BoundingBox] = []
-    tree = ET.parse(symbol_detection_results_path)
-    for obj in tree.getroot().findall('object'):
-        symbol_bboxes.append(BoundingBox(
-            topX=int(obj.find('bndbox').find('xmin').text),
-            topY=int(obj.find('bndbox').find('ymin').text),
-            bottomX=int(obj.find('bndbox').find('xmax').text),
-            bottomY=int(obj.find('bndbox').find('ymax').text),
-        ))
+    font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'Songti.ttc'), 16, encoding='utf-8')
+
+    symbol_detection_results: list[SymbolAndTextAssociated] = []
+    with open(symbol_detection_results_path, 'r') as file:
+        tree = json.load(file)
+        for i, obj in enumerate(tree):
+            symbol_detection_results.append(SymbolAndTextAssociated(
+                topX=obj['topX'],
+                topY=obj['topY'],
+                bottomX=obj['bottomX'],
+                bottomY=obj['bottomY'],
+                id=i,
+                label=obj['label'],
+                text_associated=obj['text associated'],
+            ))
     symbol_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    for i, bbox in enumerate(symbol_bboxes):
-        xmin = int(bbox.topX)
-        ymin = int(bbox.topY)
-        xmax = int(bbox.bottomX)
-        ymax = int(bbox.bottomY)
-        cv2.rectangle(symbol_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-        cv2.putText(symbol_image, f'{i}', (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    symbol_image = Image.fromarray(cv2.cvtColor(symbol_image, cv2.COLOR_BGR2RGB))
+    symbol_draw = ImageDraw.Draw(symbol_image)
+    for i, bbox in enumerate(symbol_detection_results):
+        xmin = int(bbox.topX * image_width)
+        ymin = int(bbox.topY * image_height)
+        xmax = int(bbox.bottomX * image_width)
+        ymax = int(bbox.bottomY * image_height)
+        label = bbox.label
+        symbol_draw.rectangle(((xmin, ymin), (xmax, ymax)), outline=(0, 255, 0), width=2)
+        symbol_draw.text((xmin, ymin - 20), f'{i}: {label}', (0, 255, 0), font=font)
+    symbol_image = cv2.cvtColor(np.asarray(symbol_image), cv2.COLOR_RGB2BGR)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'symbol_detection_results.jpg'), symbol_image)
 
-    text_bboxes: list[BoundingBox] = []
-    tree = ET.parse(text_detection_results_path)
-    for obj in tree.getroot().findall('object'):
-        text_bboxes.append(BoundingBox(
-            topX=int(obj.find('bndbox').find('xmin').text),
-            topY=int(obj.find('bndbox').find('ymin').text),
-            bottomX=int(obj.find('bndbox').find('xmax').text),
-            bottomY=int(obj.find('bndbox').find('ymax').text),
-        ))
+    text_detection_results: list[TextRecognized] = []
+    with open(text_detection_results_path, 'r') as file:
+        tree = json.load(file)
+        for i, obj in enumerate(tree):
+            text_detection_results.append(TextRecognized(
+                topX=obj['topX'],
+                topY=obj['topY'],
+                bottomX=obj['bottomX'],
+                bottomY=obj['bottomY'],
+                text=obj['text'],
+            ))
     text_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-    for i, bbox in enumerate(text_bboxes):
-        xmin = int(bbox.topX)
-        ymin = int(bbox.topY)
-        xmax = int(bbox.bottomX)
-        ymax = int(bbox.bottomY)
-        cv2.rectangle(text_image, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
-        cv2.putText(text_image, f'{i}', (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+    text_image = Image.fromarray(cv2.cvtColor(text_image, cv2.COLOR_BGR2RGB))
+    text_draw = ImageDraw.Draw(text_image)
+    for i, bbox in enumerate(text_detection_results):
+        xmin = int(bbox.topX * image_width)
+        ymin = int(bbox.topY * image_height)
+        xmax = int(bbox.bottomX * image_width)
+        ymax = int(bbox.bottomY * image_height)
+        text = bbox.text
+        text_draw.rectangle(((xmin, ymin), (xmax, ymax)), outline=(255, 0, 0), width=2)
+        text_draw.text((xmin, ymin - 20), f'{i}: {text}', (255, 0, 0), font=font)
+    text_image = cv2.cvtColor(np.asarray(text_image), cv2.COLOR_RGB2BGR)
     cv2.imwrite(os.path.join(os.path.dirname(__file__), 'input', 'text_detection_results.jpg'), text_image)
 
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
+    symbol_bboxes = _get_denormalized_items(symbol_detection_results, image_height, image_width)
     image = LineDetectionImagePreprocessor.clear_bounding_boxes(image, symbol_bboxes)
 
+    text_bboxes = _get_denormalized_items(text_detection_results, image_height, image_width)
     image = LineDetectionImagePreprocessor.clear_bounding_boxes(image, text_bboxes)
 
     image = cv2.cvtColor(image,
