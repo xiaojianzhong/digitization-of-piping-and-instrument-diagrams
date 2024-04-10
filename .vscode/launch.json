@@ -63,7 +63,7 @@
                 "--image-path", "./app/services/line_detection/input/image.jpg",
                 "--symbol-detection-results-path", "./app/services/line_detection/input/symbol_detection_results.json",
                 "--text-detection-results-path", "./app/services/line_detection/input/text_detection_results.json",
-                "--line-detection-results-path", "./app/services/line_detection/output/line_detection_results2.json",
+                "--line-detection-results-path", "./app/services/line_detection/output/line_detection_results.json",
             ],
             "cwd": "${workspaceFolder}/src/",
             "justMyCode": true
